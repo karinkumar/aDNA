@@ -20,3 +20,4 @@ rule bam:
      samtools coverage {output} > {wildcards.sample}.cov.txt
      samtools index {output}
 """
+
