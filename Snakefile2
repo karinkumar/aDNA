@@ -1,0 +1,83 @@
+configfile: "config.yaml"
+
+
+#wildcard_constraints:
+ #   ANC = r"AFR_EUR|AFR|EUR"
+    
+     #expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/240304isecASW_{prefix}_{suffix}diploid{cov}x_{ANC}.aggRSquare", ANC = ["AFR_EUR", "AFR", "EUR"], cov = config["COV"], prefix = ["no1kgsingleton"])
+     #expand("/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecASWbcftoolsAFRdiploid_{cov}xchr20.vcf.gz", cov = config["COV"], ANC = ["AFR_EUR", "AFR", "EUR"])
+     #,  expand("tmp/{cov}.#{#ANC}_withsingleton.{sites}.txt", ANC = ["AFR_EUR", "AFR", "EUR"], sites = range(1, 11), cov = config["COV"])
+
+rule all:
+     input: expand("/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz", cov = config["COV"], ANC = ["AFR", "EUR", "AFR_EUR"], prefix = ["no1kgsingleton"])
+
+rule glimpse2:
+    input:
+        gl="/net/fantasia/home/kiranhk/aDNA/data/gl/bcftoolsgenogvcfs{cov}x.vcf.gz", chunks="/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/chunks.{ANC}_{prefix}.chr20.txt"
+    output:
+        "tmp/{cov}.{ANC}_{prefix}.{sites}.txt"
+    params:
+        out_name = "GLIMPSE_impute/aDNA10{ANC}_{prefix}_{cov}x",
+        main = 1,
+        burnin=19,
+        dir = "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar",
+        ref = "reference_panel/split/{ANC}ref",
+	ref_wsingleton = "reference_panel/split/1000GP.{prefix}.{ANC}ref"
+    resources: mem_mb = 10000, constraint = "avx2"
+    shell: """
+#bcftools index -f {input.gl}
+cd ~/software/GLIMPSE2_for_kiran_kumar
+
+NUM={wildcards.sites}
+
+    # Read the specific chunk from the input file based on the chunk index
+    LINE=$(sed -n "${{NUM}}p" {input.chunks})
+
+    printf -v ID "%02d" $(echo $LINE | cut -d" " -f1)
+    IRG=$(echo $LINE | cut -d" " -f3)
+    ORG=$(echo $LINE | cut -d" " -f4)
+    CHR=$(echo ${{LINE}} | cut -d" " -f2)
+    REGS=$(echo ${{IRG}} | cut -d":" -f 2 | cut -d"-" -f1)
+    REGE=$(echo ${{IRG}} | cut -d":" -f 2 | cut -d"-" -f2)
+
+    # Execute GLIMPSE2_phase for the current chunk
+    ./phase/bin/GLIMPSE2_phase --input-gl {input.gl} --reference {params.ref_wsingleton}_${{CHR}}_${{REGS}}_${{REGE}}.bin --output {params.out_name}_${{CHR}}_${{REGS}}_${{REGE}}.bcf --out-ap-field --main {params.main} --burnin {params.burnin}
+
+echo {wildcards.sites} > ~/aDNA/data/{output}
+
+   """
+
+rule ligate:
+     input: expand("tmp/{cov}.{ANC}_{prefix}.{sites}.txt", cov = config["COV"], ANC = ["AFR", "EUR", "AFR_EUR"], sites = range(1, 11), prefix = ["no1kgsingleton"])
+     output: "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz"
+     shell:"""
+     cd ~/software/GLIMPSE2_for_kiran_kumar
+           #GLIMPSE ligate   
+            LST={wildcards.ANC}_{wildcards.cov}list.chr20.txt
+            ls -1v GLIMPSE_impute/ASW{wildcards.ANC}_{wildcards.prefix}{wildcards.cov}x*.bcf > ${{LST}}
+            ./ligate/bin/GLIMPSE2_ligate --input ${{LST}} --output {output} #automatically indexes
+              """
+
+
+rule isec:
+     input: afr="/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_{prefix}_{cov}xchr20.vcf.gz", eur =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_EUR_{prefix}_{cov}xchr20.vcf.gz", mega =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_EUR_{prefix}_{cov}xchr20.vcf.gz"
+     output: afr =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_{prefix}_{cov}xchr20.vcf.gz", eur =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_{prefix}_{cov}xchr20.vcf.gz", mega =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_EUR_{prefix}_{cov}xchr20.vcf.gz"
+     shell: """
+        bcftools isec {input.afr} {input.eur} {input.mega} -n=3 -w 3 -Oz -o {output.mega}
+        bcftools isec {input.afr} {input.eur} -n=2 -w 1 -Oz -o {output.afr}
+        bcftools isec {input.afr} {input.eur} -n=2 -w 2 -Oz -o {output.eur}
+	bcftools index {output.afr} 
+	bcftools index {output.eur}
+	bcftools index {output.mega}
+
+    """
+
+rule aggRSquare:  
+     input: "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz"
+     output: "/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_{prefix}diploid{cov}x_{ANC}.aggRSquare"
+     localrule: True
+     params: val = "..." , af = "unrelatedphase3AF.txt"
+     shell: """
+     cd ~/aggRSquare/release-build
+      ./aggRSquare -v {params.val}  -i {input}  -o /net/fantasia/home/kiranhk/aggRSquare/release-build/240304isecASW_{wildcards.prefix}diploid{wildcards.cov}x_{wildcards.ANC}  --AF {params.af} 
+     """
