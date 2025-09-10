@@ -1,0 +1,20 @@
+samples:
+- SIII
+- Lovelock2
+- Lovelock3
+- baa001
+- ela001
+- new001
+- HSJ-A-1
+- SSG-A-2
+- STT-A-2
+- atp016
+
+COV:
+- 0.1
+- 0.5
+- 1
+- 2
+- 4
+- 6
+- 8
