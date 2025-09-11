@@ -1,7 +1,7 @@
 configfile: "config.yaml"
 
 rule all:
-     input: expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"])
+     input: expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"]), expand("../val/{sample}_validation.vcf.gz", sample = config["samples"])
 
 
 rule align:
@@ -85,3 +85,42 @@ rule combine_gl:
         bcftools merge -m none -r chr20 -Oz -o {output} -l {wildcards.cov}list.txt
         bcftools index {output}
         """
+
+
+rule val_gt:
+     input: "{sample}.sorted.bam"
+     output: "../val/{sample}_validation.vcf.gz"
+     params:
+        sites="~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.sites.vcf.gz",
+	sites_tsv="~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.sites.tsv.gz",
+	mask="~/20160622.allChr.mask.bed",
+	repeats="~/repeatsmask.bed",
+	m_header="~/mask_header.txt",
+	r_header="~/repeats_header.txt"
+     shell:"""
+OUT=/net/fantasia/home/kiranhk/aDNA/data/val/{wildcards.sample}.raw.Q20.q30.calls.vcf.gz
+bcftools mpileup -f ~/hg38.fasta -I -E -a 'FORMAT/DP' --ignore-RG -T {params.sites} -Q 20 -q 30 -C 50 -r chr20 {input} | bcftools call -Aim -C alleles -T {params.sites_tsv} -Oz -o $OUT
+#bcftools reheader -S {wildcards.sample} -o {output}
+#remove masked sites
+bcftools annotate -a {params.mask} -m +MASK=strict -h {params.m_header} -c CHROM,POS,FROM,TO $OUT | bcftools view -i 'INFO/MASK="strict"' | bcftools annotate -a {params.repeats} -m REPEATS=repeats -h {params.r_header} -c CHROM,POS,FROM,TO | bcftools view --exclude 'REPEATS="repeats"' -Oz -o ../val/{wildcards.sample}_removedmaskrepeats.vcf.gz
+bcftools index -f  ../val/{wildcards.sample}_removedmaskrepeats.vcf.gz
+
+#depth and QUAL filter
+DOC=$(bcftools query -f '%INFO/DP\n' $OUT |  awk 'BEGIN {{ s = 0; l=0; }} {{ s+=$1; l++; }} END {{ print s/l;}}')
+
+LOW=$(python3 limitsDoC.py $DOC | awk '{{print $1}}')
+UPP=$(python3 limitsDoC.py $DOC | awk '{{print $2}}')
+echo $LOW $UPP
+
+bcftools filter --exclude "FORMAT/DP<$LOW |  FMT/DP>$UPP & QUAL<30" ../val/{wildcards.sample}_removedmaskrepeats.vcf.gz -Oz -o {output}
+bcftools index -f {output}
+"""
+
+
+#rule combine_valgt:
+     #input: "../val/{sample}_validation.vcf.gz"
+     #output: "../val/cleaned_validation.vcf.gz"
+     #shell:"""
+#combine files
+
+
