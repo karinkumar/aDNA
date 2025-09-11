@@ -81,3 +81,11 @@ rule aggRSquare:
      cd ~/aggRSquare/release-build
       ./aggRSquare -v {params.val}  -i {input}  -o /net/fantasia/home/kiranhk/aggRSquare/release-build/240304isecASW_{wildcards.prefix}diploid{wildcards.cov}x_{wildcards.ANC}  --AF {params.af} 
      """
+
+rule aggRSquare_indiv:
+     input:
+     output:
+     params: af ="unrelatedphase3AF.txt"
+     shell:"""
+     #subset ligate file to individual
+     #
