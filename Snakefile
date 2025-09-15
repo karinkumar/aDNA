@@ -1,8 +1,7 @@
 configfile: "config.yaml"
 
 rule all:
-     input: expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"]), expand("../val/{sample}_validation.vcf.gz", sample = config["samples"])
-
+     input: expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"]), expand("../val/{sample}_validation.vcf.gz", sample = config["samples"]), "../val/combined_val.vcf.gz", "../val/10aDNA_AF.txt"
 
 rule align:
      input: "{sample}.fastq.gz"
@@ -117,10 +116,20 @@ bcftools index -f {output}
 """
 
 
-#rule combine_valgt:
-     #input: "../val/{sample}_validation.vcf.gz"
-     #output: "../val/cleaned_validation.vcf.gz"
-     #shell:"""
+rule combine_valgt:
+     input: expand("../val/{sample}_validation.vcf.gz", sample = config["samples"])
+     output: "../val/combined_val.vcf.gz"
+     shell:"""
 #combine files
+ls ~/aDNA/val/*_validation.vcf.gz > ../val/samplevcflist.txt
+bcftools merge -m none -r chr20 -Oz -o {output} -l ../val/samplevcflist.txt
+bcftools index {output}
+"""
 
+rule af:
+     input: "../val/combined_val.vcf.gz"
+     output: "../val/10aDNA_AF.txt"
+     shell: """
+     bcftools isec -n=2 -w 2 ~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.vcf.gz {input} | bcftools +fill-tags -- -t AF |  bcftools query -f '%CHROM:%POS:%REF:%ALT\t%AF\n' > {output}
 
+"""

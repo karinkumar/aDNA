@@ -1,15 +1,10 @@
 configfile: "config.yaml"
 
-
-#wildcard_constraints:
- #   ANC = r"AFR_EUR|AFR|EUR"
-    
-     #expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/240304isecASW_{prefix}_{suffix}diploid{cov}x_{ANC}.aggRSquare", ANC = ["AFR_EUR", "AFR", "EUR"], cov = config["COV"], prefix = ["no1kgsingleton"])
-     #expand("/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecASWbcftoolsAFRdiploid_{cov}xchr20.vcf.gz", cov = config["COV"], ANC = ["AFR_EUR", "AFR", "EUR"])
-     #,  expand("tmp/{cov}.#{#ANC}_withsingleton.{sites}.txt", ANC = ["AFR_EUR", "AFR", "EUR"], sites = range(1, 11), cov = config["COV"])
+wildcard_constraints:
+    ANC = r"(AFR_EUR|AFR|EUR)"
 
 rule all:
-     input: expand("/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz", cov = config["COV"], ANC = ["AFR", "EUR", "AFR_EUR"], prefix = ["no1kgsingleton"])
+     input: expand("/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz", cov = config["COV"], ANC = ["AFR", "EUR", "AFR_EUR"], prefix = ["no1kgsingleton"]), expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_{prefix}diploid{cov}x_{ANC}.aggRSquare", prefix = ["no1kgsingleton"], cov = config["COV"], ANC = ["AFR", "EUR", "AFR_EUR"])
 
 rule glimpse2:
     input:
@@ -54,14 +49,14 @@ rule ligate:
      cd ~/software/GLIMPSE2_for_kiran_kumar
            #GLIMPSE ligate   
             LST={wildcards.ANC}_{wildcards.cov}list.chr20.txt
-            ls -1v GLIMPSE_impute/ASW{wildcards.ANC}_{wildcards.prefix}{wildcards.cov}x*.bcf > ${{LST}}
+            ls -1v GLIMPSE_impute/aDNA10{wildcards.ANC}_{wildcards.prefix}_{wildcards.cov}x*.bcf > ${{LST}}
             ./ligate/bin/GLIMPSE2_ligate --input ${{LST}} --output {output} #automatically indexes
               """
-
+#DNA10EUR_no1kgsingleton_0.1x_chr20_5661051_12658218.bcf.csi
 
 rule isec:
      input: afr="/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_{prefix}_{cov}xchr20.vcf.gz", eur =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_EUR_{prefix}_{cov}xchr20.vcf.gz", mega =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_EUR_{prefix}_{cov}xchr20.vcf.gz"
-     output: afr =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_{prefix}_{cov}xchr20.vcf.gz", eur =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_{prefix}_{cov}xchr20.vcf.gz", mega =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_EUR_{prefix}_{cov}xchr20.vcf.gz"
+     output: afr =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_{prefix}_{cov}xchr20.vcf.gz", eur =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_EUR_{prefix}_{cov}xchr20.vcf.gz", mega =  "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_AFR_EUR_{prefix}_{cov}xchr20.vcf.gz"
      shell: """
         bcftools isec {input.afr} {input.eur} {input.mega} -n=3 -w 3 -Oz -o {output.mega}
         bcftools isec {input.afr} {input.eur} -n=2 -w 1 -Oz -o {output.afr}
@@ -75,17 +70,18 @@ rule isec:
 rule aggRSquare:  
      input: "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/isecaDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz"
      output: "/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_{prefix}diploid{cov}x_{ANC}.aggRSquare"
-     localrule: True
-     params: val = "..." , af = "unrelatedphase3AF.txt"
+     params: val = "~/aDNA/val/combined_val.vcf.gz" , af = "~/aDNA/val/10aDNA_AF.txt", out="/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/reheader_isecaDNA10_{ANC}_{prefix}_{cov}xchr20.vcf.gz"
      shell: """
+     bcftools query -l {params.val} > ../val/samples.txt
+     bcftools reheader -s ../val/samples.txt -o {params.out} {input}
      cd ~/aggRSquare/release-build
-      ./aggRSquare -v {params.val}  -i {input}  -o /net/fantasia/home/kiranhk/aggRSquare/release-build/240304isecASW_{wildcards.prefix}diploid{wildcards.cov}x_{wildcards.ANC}  --AF {params.af} 
+      ./aggRSquare -v {params.val}  -i {params.out}  -o /net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_{wildcards.prefix}diploid{wildcards.cov}x_{wildcards.ANC}  --AF {params.af} 
      """
-
-rule aggRSquare_indiv:
-     input:
-     output:
-     params: af ="unrelatedphase3AF.txt"
-     shell:"""
+ 
+#rule aggRSquare_indiv:
+     #input:
+     #output:
+     #params: af ="unrelatedphase3AF.txt"
+     #shell:"""
      #subset ligate file to individual
      #
