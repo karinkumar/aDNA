@@ -36,7 +36,7 @@ NUM={wildcards.sites}
     REGE=$(echo ${{IRG}} | cut -d":" -f 2 | cut -d"-" -f2)
 
     # Execute GLIMPSE2_phase for the current chunk
-    ./phase/bin/GLIMPSE2_phase --input-gl {input.gl} --reference {params.ref_wsingleton}_${{CHR}}_${{REGS}}_${{REGE}}.bin --output {params.out_name}_${{CHR}}_${{REGS}}_${{REGE}}.bcf --out-ap-field --main {params.main} --burnin {params.burnin}
+    ./phase/bin/GLIMPSE2_phase --input-gl {input.gl} --reference {params.ref_wsingleton}_${{CHR}}_${{REGS}}_${{REGE}}.bin --output {params.out_name}_${{CHR}}_${{REGS}}_${{REGE}}.bcf --out-ap-field --main {params.main} --burnin {params.burnin} --keep-monomorphic
 
 echo {wildcards.sites} > ~/aDNA/data/{output}
 

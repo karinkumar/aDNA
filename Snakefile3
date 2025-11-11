@@ -1,0 +1,70 @@
+configfile: "config.yaml"
+
+rule all:
+    input:expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid_{cov}x_{type}_{algo}_{miss}.aggRSquare", cov=config["COV"], type=["plain", "mixed"], algo = ["fb"], miss = ["samedosage", "zerodosage"])
+
+rule meta:
+    input:
+        gl = "/net/fantasia/home/kiranhk/aDNA/data/gl/bcftoolsgenogvcfs{cov}x.vcf.gz",
+        afr = "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_no1kgsingleton_{cov}xchr20.vcf.gz",
+        eur = "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_EUR_no1kgsingleton_{cov}xchr20.vcf.gz",
+    output:
+        expand("/net/fantasia/home/kiranhk/HMM/results/chunks/10aDNA_{cov}x_{type}state_{algo}_{miss}_{num}.vcf.gz", cov = "{cov}", type = "{type}", algo = "{algo}", miss = "{miss}", num = range(30))
+                   
+    params:
+        nomixedstate = lambda wildcards: "--nomixedstate" if wildcards.type == "plain" else "",
+	miss = lambda wildcards: "--samedosage" if wildcards.miss == "samedosage" else "",
+	zero = lambda wildcards: "--zerodosage" if wildcards.miss == "zerodosage" else "",
+	algo = lambda wildcards: "--phased" if wildcards.algo == "phased" else ""
+	
+    shell:
+        """
+        cd ~/HMM
+        python3.11 RunMetaGLIMPSE.py \
+            --dosages {input.afr} {input.eur} \
+            --gl {input.gl} \
+            --out results/chunks/10aDNA_{wildcards.cov}x_{wildcards.type}state_{wildcards.algo}_{wildcards.miss}_ \
+            {params.nomixedstate} {params.miss} {params.algo} {params.zero} --chr 'chr20'
+        """
+
+rule ligateMeta:
+    input: 
+        expand("/net/fantasia/home/kiranhk/HMM/results/chunks/10aDNA_{cov}x_{type}state_{algo}_{miss}_{num}.vcf.gz", 
+               num=range(30), cov="{cov}", type="{type}", miss = "{miss}", algo = "{algo}")
+    output: 
+        "/net/fantasia/home/kiranhk/HMM/results/10aDNA_{cov}x_{type}state_{algo}_{miss}.vcf.gz"
+    shell:
+        """
+        cd ~/HMM/results
+        ls -v /net/fantasia/home/kiranhk/HMM/results/chunks/10aDNA_{wildcards.cov}x_{wildcards.type}state_{wildcards.algo}_{wildcards.miss}*.vcf.gz > list_{wildcards.cov}_{wildcards.type}_{wildcards.algo}_{wildcards.miss}.txt
+        bcftools concat -f list_{wildcards.cov}_{wildcards.type}_{wildcards.algo}_{wildcards.miss}.txt -Oz -o {output}       
+	bcftools index {output}
+"""
+
+
+rule isec:
+    input:
+        afr = "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_AFR_no1kgsingleton_{cov}xchr20.vcf.gz",
+        eur = "/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/aDNA10_EUR_no1kgsingleton_{cov}xchr20.vcf.gz",
+        results = "/net/fantasia/home/kiranhk/HMM/results/10aDNA_{cov}x_{type}state_{algo}_{miss}.vcf.gz"
+    output:
+        "/net/fantasia/home/kiranhk/HMM/results/isec10aDNA{cov}x_{type}_{algo}_{miss}.vcf.gz"
+    shell:
+        """
+        bcftools isec {input.afr} {input.eur} {input.results} -n=3 -w 3 -Oz -o {output}
+        bcftools index {output}
+        """
+
+rule aggRSquare:
+    input:
+        "/net/fantasia/home/kiranhk/HMM/results/isec10aDNA{cov}x_{type}_{algo}_{miss}.vcf.gz"
+    output:
+        "/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid_{cov}x_{type}_{algo}_{miss}.aggRSquare"
+    params:
+        val = "~/aDNA/val/combined_val.vcf.gz",
+        af = "../val/10aDNA_AF.txt" 
+    shell:
+        """
+        cd ~/aggRSquare/release-build
+        ./aggRSquare -v {params.val} -i {input} -o 250901isec10aDNA_no1kgsingletondiploid_{wildcards.cov}x_{wildcards.type}_{wildcards.algo}_{wildcards.miss} --AF {params.af}
+        """

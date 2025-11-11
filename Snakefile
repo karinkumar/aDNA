@@ -63,8 +63,8 @@ rule gl:
         vcf="{sample}_chr20.{cov}x.vcf.gz",
         tbi="{sample}_chr20.{cov}x.vcf.gz.csi"
     params:
-        sites="~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.sites.vcf.gz",
-	sites_tsv="~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.sites.tsv.gz"
+        sites="~/1kg30xEUR/ref/1kgsites.vcf.gz",
+	sites_tsv="~/1kg30xEUR/ref/1kgsites.tsv.gz"
     shell:
         """
         samtools index {input} #force reindexing to stay current
@@ -130,6 +130,5 @@ rule af:
      input: "../val/combined_val.vcf.gz"
      output: "../val/10aDNA_AF.txt"
      shell: """
-     bcftools isec -n=2 -w 2 ~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.vcf.gz {input} | bcftools +fill-tags -- -t AF |  bcftools query -f '%CHROM:%POS:%REF:%ALT\t%AF\n' > {output}
-
+bcftools isec -n=2 -w 2 {input} ~/1kg30xASW/ref/1000GP.chr20.clean.nosingletons.vcf.gz | bcftools query -f '%CHROM:%POS:%REF:%ALT\t%AF\n' > {output}
 """
