@@ -1,7 +1,7 @@
 configfile: "config.yaml"
 
 rule all:
-    input:expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid_{cov}x_{type}_{algo}_{miss}.aggRSquare", cov=config["COV"], type=["plain", "mixed"], algo = ["fb"], miss = ["samedosage", "zerodosage"])
+    input:expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid{cov}x_{type}_{algo}_{miss}.aggRSquare", cov=config["COV"], type=["plain", "mixed"], algo = ["fb"], miss = ["samedosage", "zerodosage"])
 
 rule meta:
     input:
@@ -59,12 +59,14 @@ rule aggRSquare:
     input:
         "/net/fantasia/home/kiranhk/HMM/results/isec10aDNA{cov}x_{type}_{algo}_{miss}.vcf.gz"
     output:
-        "/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid_{cov}x_{type}_{algo}_{miss}.aggRSquare"
+        "/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid{cov}x_{type}_{algo}_{miss}.aggRSquare"
     params:
         val = "~/aDNA/val/combined_val.vcf.gz",
-        af = "../val/10aDNA_AF.txt" 
-    shell:
-        """
-        cd ~/aggRSquare/release-build
-        ./aggRSquare -v {params.val} -i {input} -o 250901isec10aDNA_no1kgsingletondiploid_{wildcards.cov}x_{wildcards.type}_{wildcards.algo}_{wildcards.miss} --AF {params.af}
+        af = "~/aDNA/val/10aDNA_AF.txt",
+	out="/net/fantasia/home/kiranhk/software/GLIMPSE2_for_kiran_kumar/GLIMPSE_ligate/reheader_isecaDNA10_{cov}x_{type}_{algo}_{miss}.vcf.gz"
+    shell: """
+     #bcftools query -l {params.val} > ../val/samples.txt
+     bcftools reheader -s ../val/samples.txt -o {params.out} {input}
+     cd ~/aggRSquare/release-build
+     ./aggRSquare -v {params.val} -i {params.out} -o 250901isec10aDNA_no1kgsingletondiploid{wildcards.cov}x_{wildcards.type}_{wildcards.algo}_{wildcards.miss} --AF {params.af}
         """
