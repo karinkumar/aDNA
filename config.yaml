@@ -9,6 +9,7 @@ samples:
 - SSG-A-2
 - STT-A-2
 - atp016
+- ERR2224077
 
 COV:
 - 0.1

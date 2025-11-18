@@ -1,7 +1,7 @@
 configfile: "config.yaml"
 
 rule all:
-    input:expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid{cov}x_{type}_{algo}_{miss}.aggRSquare", cov=config["COV"], type=["plain", "mixed"], algo = ["fb"], miss = ["samedosage", "zerodosage"])
+    input:expand("/net/fantasia/home/kiranhk/aggRSquare/release-build/250901isec10aDNA_no1kgsingletondiploid{cov}x_{type}_{algo}_{miss}.aggRSquare", cov=config["COV"], type=["mixed"], algo = ["fb", "phased"], miss = ["samedosage", "zerodosage"]) #plain cannot go with "phased" 
 
 rule meta:
     input:

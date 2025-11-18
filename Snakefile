@@ -1,7 +1,8 @@
 configfile: "config.yaml"
 
 rule all:
-     input: expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"]), expand("../val/{sample}_validation.vcf.gz", sample = config["samples"]), "../val/combined_val.vcf.gz", "../val/10aDNA_AF.txt"
+     input: expand("{sample}.sorted.bam", sample = config["samples"])
+#expand("{sample}_chr20_{cov}x.bam", sample = config["samples"], cov = config["COV"]), expand("gl/bcftoolsgenogvcfs{cov}x.vcf.gz", cov = config ["COV"]), expand("../val/{sample}_validation.vcf.gz", sample = config["samples#"]), "../val/combined_val.vcf.gz", "../val/10aDNA_AF.txt"
 
 rule align:
      input: "{sample}.fastq.gz"
